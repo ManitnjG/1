@@ -126,7 +126,7 @@ jobs:
           ROM Name & Android Version: ${{ github.event.inputs.ROM_NAME_ANDROID_VERSION }}
           Device Name & Build Type: ${{ github.event.inputs.MAKEFILE_NAME_BUILD_TYPE }}
       env:
-        GITHUB_TOKEN: ${{ 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 }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Delete device tree
       if: |

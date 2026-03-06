@@ -78,3 +78,6 @@ Telegram: https://t.me/mujianwu<br/>
 ## 编译结果
 - 构建成功可以前往Release下载。
 - 构建失败可以前往Artifacts获取错误日志。
+
+## New: TIDAL Android App Blueprint
+- See `TIDAL_ANDROID_APP_BLUEPRINT.md` for a standalone app architecture and delivery plan.

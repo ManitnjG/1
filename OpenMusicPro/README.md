@@ -30,6 +30,10 @@ cd scripts
 ./build_from_github.sh <github_repo_url> [branch] [project_subdir]
 ```
 
+Notes:
+- Yes, this script is specifically for building the Android app module (`:app`) from a GitHub repository.
+- If the repo root is not the Android project root, pass `project_subdir` (for this layout, use `OpenMusicPro`).
+
 Example (this repo layout):
 
 ```bash

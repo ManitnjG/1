@@ -26,7 +26,21 @@ git clone --depth 1 --branch "$BRANCH" "$REPO_URL" "$WORKDIR/repo"
 
 cd "$WORKDIR/repo"
 if [[ -n "$PROJECT_SUBDIR" ]]; then
+  if [[ ! -d "$PROJECT_SUBDIR" ]]; then
+    echo "ERROR: project_subdir '$PROJECT_SUBDIR' does not exist in repository."
+    exit 3
+  fi
   cd "$PROJECT_SUBDIR"
+fi
+
+if [[ ! -f "settings.gradle.kts" && ! -f "settings.gradle" ]]; then
+  echo "ERROR: current directory is not an Android/Gradle project root (missing settings.gradle[.kts])."
+  exit 4
+fi
+
+if [[ ! -d "app" ]]; then
+  echo "ERROR: expected Android app module directory 'app/' was not found."
+  exit 5
 fi
 
 if [[ ! -f "gradlew" ]]; then

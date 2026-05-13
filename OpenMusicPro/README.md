@@ -1,0 +1,23 @@
+# OpenMusic Pro
+
+Production-ready scaffold for a premium Spotify-style music player built with Kotlin + Jetpack Compose + Media3.
+
+## Included
+- Clean architecture folders (data/domain/presentation)
+- MVVM-ready Compose app shell
+- Media service placeholder for Media3 session integration
+- Node.js backend scaffold with JWT auth and trending endpoint
+- CI workflow for Android lint + unit tests
+
+## Tech stack
+Kotlin, Compose, Material 3, Hilt, Room, Retrofit, Coroutines, Paging 3, Coil, WorkManager, Media3/ExoPlayer.
+
+## Setup
+1. Open `OpenMusicPro` in Android Studio (latest stable).
+2. Install Android SDK 35 and JDK 17.
+3. Run `./gradlew assembleDebug`.
+4. Backend: `cd backend/nodejs && npm install && npm run dev`.
+
+## Notes
+- This repository intentionally uses only legal/open audio sources. Add connectors for MusicBrainz, Last.fm, Genius, Jamendo, Archive.org, radio, WebDAV, SMB/NAS.
+- Add secrets via `local.properties` / CI secrets.

@@ -46,3 +46,16 @@ jobs:
         with:
           name: openmusicpro-debug-apk
           path: OpenMusicPro/app/build/outputs/apk/debug/*.apk
+
+
+      - name: Create source ZIP
+        working-directory: OpenMusicPro
+        run: |
+          mkdir -p dist
+          zip -r dist/OpenMusicPro-source.zip . -x "dist/*" "*.git*"
+
+      - name: Upload source ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: openmusicpro-source-zip
+          path: OpenMusicPro/dist/OpenMusicPro-source.zip

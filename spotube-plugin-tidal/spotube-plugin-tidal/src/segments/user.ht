@@ -1,0 +1,245 @@
+import 'package:hetu_spotube_plugin/hetu_spotube_plugin.dart'
+
+class UserEndpoint {
+  var client: HttpClient
+  var auth: AuthEndpoint
+
+  construct (this.client, this.auth)
+
+  fun me() {
+    return client.get(
+      "/v1/users/${auth.userId()}",
+      queryParameters: {
+        "sessionId":   auth.sessionId(),
+        "token":       "kgsOOmYk3zShYrNP",
+        "countryCode": auth.country()
+      }
+    ).then((res) {
+      var u = res.data
+      return {
+        "id":          u["id"].toString(),
+        "displayName": u["firstName"] + " " + u["lastName"],
+        "email":       u["email"],
+        "externalUri": "https://tidal.com/browse/profile/" + u["id"].toString(),
+        "images": []
+      }.toJson()
+    })
+  }
+
+  fun savedTracks({ offset: int = 0, limit: int = 20 }) {
+    return client.get(
+      "/v1/users/${auth.userId()}/favorites/tracks",
+      queryParameters: {
+        "sessionId":   auth.sessionId(),
+        "token":       "kgsOOmYk3zShYrNP",
+        "countryCode": auth.country(),
+        "offset":      offset.toString(),
+        "limit":       limit.toString(),
+        "order":       "DATE",
+        "orderDirection": "DESC"
+      }
+    ).then((res) {
+      var data = res.data
+      var items = data["items"] as List
+      var mapped = items.map((item) {
+        return _mapTrack(item["item"])
+      }).toList()
+      return {
+        "items":  mapped,
+        "total":  data["totalNumberOfItems"],
+        "offset": offset,
+        "limit":  limit
+      }.toJson()
+    })
+  }
+
+  fun savedPlaylists({ offset: int = 0, limit: int = 20 }) {
+    return client.get(
+      "/v1/users/${auth.userId()}/playlists",
+      queryParameters: {
+        "sessionId":   auth.sessionId(),
+        "token":       "kgsOOmYk3zShYrNP",
+        "countryCode": auth.country(),
+        "offset":      offset.toString(),
+        "limit":       limit.toString()
+      }
+    ).then((res) {
+      var data = res.data
+      var items = (data["items"] as List).map((p) => _mapPlaylist(p)).toList()
+      return {
+        "items":  items,
+        "total":  data["totalNumberOfItems"],
+        "offset": offset,
+        "limit":  limit
+      }.toJson()
+    })
+  }
+
+  fun savedAlbums({ offset: int = 0, limit: int = 20 }) {
+    return client.get(
+      "/v1/users/${auth.userId()}/favorites/albums",
+      queryParameters: {
+        "sessionId":   auth.sessionId(),
+        "token":       "kgsOOmYk3zShYrNP",
+        "countryCode": auth.country(),
+        "offset":      offset.toString(),
+        "limit":       limit.toString()
+      }
+    ).then((res) {
+      var data = res.data
+      var items = (data["items"] as List).map((item) => _mapAlbum(item["item"])).toList()
+      return {
+        "items":  items,
+        "total":  data["totalNumberOfItems"],
+        "offset": offset,
+        "limit":  limit
+      }.toJson()
+    })
+  }
+
+  fun savedArtists({ offset: int = 0, limit: int = 20 }) {
+    return client.get(
+      "/v1/users/${auth.userId()}/favorites/artists",
+      queryParameters: {
+        "sessionId":   auth.sessionId(),
+        "token":       "kgsOOmYk3zShYrNP",
+        "countryCode": auth.country(),
+        "offset":      offset.toString(),
+        "limit":       limit.toString()
+      }
+    ).then((res) {
+      var data = res.data
+      var items = (data["items"] as List).map((item) => _mapArtist(item["item"])).toList()
+      return {
+        "items":  items,
+        "total":  data["totalNumberOfItems"],
+        "offset": offset,
+        "limit":  limit
+      }.toJson()
+    })
+  }
+
+  fun isSavedPlaylist(playlistId: string) {
+    return savedPlaylists(limit: 50).then((res) {
+      var items = res["items"] as List
+      return items.any((p) => p["id"] == playlistId)
+    })
+  }
+
+  fun isSavedTracks(trackIds: List) {
+    return client.get(
+      "/v1/users/${auth.userId()}/favorites/tracks",
+      queryParameters: {
+        "sessionId":   auth.sessionId(),
+        "token":       "kgsOOmYk3zShYrNP",
+        "countryCode": auth.country(),
+        "limit":       "9999"
+      }
+    ).then((res) {
+      var items  = res.data["items"] as List
+      var saved  = items.map((i) => i["item"]["id"].toString()).toList()
+      return trackIds.map((id) => saved.contains(id.toString())).toList()
+    })
+  }
+
+  fun isSavedAlbums(albumIds: List) {
+    return client.get(
+      "/v1/users/${auth.userId()}/favorites/albums",
+      queryParameters: {
+        "sessionId": auth.sessionId(),
+        "token":     "kgsOOmYk3zShYrNP",
+        "limit":     "9999"
+      }
+    ).then((res) {
+      var items = res.data["items"] as List
+      var saved = items.map((i) => i["item"]["id"].toString()).toList()
+      return albumIds.map((id) => saved.contains(id.toString())).toList()
+    })
+  }
+
+  fun isSavedArtists(artistIds: List) {
+    return client.get(
+      "/v1/users/${auth.userId()}/favorites/artists",
+      queryParameters: {
+        "sessionId": auth.sessionId(),
+        "token":     "kgsOOmYk3zShYrNP",
+        "limit":     "9999"
+      }
+    ).then((res) {
+      var items = res.data["items"] as List
+      var saved = items.map((i) => i["item"]["id"].toString()).toList()
+      return artistIds.map((id) => saved.contains(id.toString())).toList()
+    })
+  }
+
+  // ── shared mapping helpers ──────────────────────────────────────────────
+
+  fun _coverUrl(uuid: string, size: int = 320) -> string {
+    if (uuid == null || uuid == "") return ""
+    var path = uuid.replaceAll("-", "/")
+    return "https://resources.tidal.com/images/${path}/${size}x${size}.jpg"
+  }
+
+  fun _mapTrack(t: Map) -> Map {
+    return {
+      "id":         t["id"].toString(),
+      "name":       t["title"],
+      "durationMs": (t["duration"] as int) * 1000,
+      "explicit":   t["explicit"] ?? false,
+      "isrc":       t["isrc"] ?? "",
+      "trackNumber": t["trackNumber"] ?? 1,
+      "artists": [
+        {
+          "id":   t["artist"]["id"].toString(),
+          "name": t["artist"]["name"],
+          "images": []
+        }
+      ],
+      "album": {
+        "id":     t["album"]["id"].toString(),
+        "name":   t["album"]["title"],
+        "images": [
+          { "url": _coverUrl(t["album"]["cover"]), "width": 320, "height": 320 }
+        ]
+      },
+      "images": [
+        { "url": _coverUrl(t["album"]["cover"]), "width": 320, "height": 320 }
+      ]
+    }
+  }
+
+  fun _mapAlbum(a: Map) -> Map {
+    return {
+      "id":          a["id"].toString(),
+      "name":        a["title"],
+      "totalTracks": a["numberOfTracks"] ?? 0,
+      "releaseDate": a["releaseDate"] ?? "",
+      "artists": [
+        { "id": a["artist"]["id"].toString(), "name": a["artist"]["name"], "images": [] }
+      ],
+      "images": [
+        { "url": _coverUrl(a["cover"]), "width": 320, "height": 320 }
+      ]
+    }
+  }
+
+  fun _mapArtist(a: Map) -> Map {
+    return {
+      "id":     a["id"].toString(),
+      "name":   a["name"],
+      "images": [
+        { "url": _coverUrl(a["picture"]), "width": 320, "height": 320 }
+      ]
+    }
+  }
+
+  fun _mapPlaylist(p: Map) -> Map {
+    return {
+      "id":          p["uuid"],
+      "name":        p["title"],
+      "description": p["description"] ?? "",
+      "totalTracks": p["numberOfTracks"] ?? 0,
+      "images":      []
+    }
+  }
+}

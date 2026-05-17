@@ -84,3 +84,10 @@ This plugin uses Tidal's undocumented internal API (same approach as [python-tid
 ## License
 
 MIT
+
+## Build on GitHub Actions
+
+This repo keeps the plugin in `spotube-plugin-tidal/spotube-plugin-tidal/`. The CI workflow now sets that directory as its working directory automatically.
+
+1. Push to `main`/`master`, open a PR, or run **Actions → Build Spotube Tidal Plugin → Run workflow**.
+2. Download the uploaded artifact zip from the workflow run.

@@ -16,6 +16,11 @@ jobs:
   build:
     name: Compile & Package Plugin
     runs-on: ubuntu-latest
+    env:
+      PLUGIN_DIR: spotube-plugin-tidal/spotube-plugin-tidal
+    defaults:
+      run:
+        working-directory: ${{ env.PLUGIN_DIR }}
 
     steps:
       # ── checkout ────────────────────────────────────────────────────────
@@ -118,6 +123,11 @@ jobs:
   lint:
     name: Check Hetu Script syntax
     runs-on: ubuntu-latest
+    env:
+      PLUGIN_DIR: spotube-plugin-tidal/spotube-plugin-tidal
+    defaults:
+      run:
+        working-directory: ${{ env.PLUGIN_DIR }}
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2

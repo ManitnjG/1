@@ -1,0 +1,211 @@
+import 'package:hetu_spotube_plugin/hetu_spotube_plugin.dart'
+
+class SearchEndpoint {
+  var client: HttpClient
+  var auth: AuthEndpoint
+
+  construct (this.client, this.auth)
+
+  get chips -> List {
+    return ["all", "tracks", "albums", "artists", "playlists"]
+  }
+
+  fun all(query: string) {
+    return client.get(
+      "/v1/search",
+      queryParameters: {
+        "query":       query,
+        "types":       "TRACKS,ALBUMS,ARTISTS,PLAYLISTS",
+        "limit":       "5",
+        "sessionId":   auth.sessionId(),
+        "token":       "kgsOOmYk3zShYrNP",
+        "countryCode": auth.country()
+      }
+    ).then((res) {
+      var d = res.data
+      return {
+        "tracks": {
+          "items":  _tracksFromItems(d["tracks"]["items"] as List),
+          "total":  d["tracks"]["totalNumberOfItems"] ?? 0,
+          "offset": 0,
+          "limit":  5
+        },
+        "albums": {
+          "items":  _albumsFromItems(d["albums"]["items"] as List),
+          "total":  d["albums"]["totalNumberOfItems"] ?? 0,
+          "offset": 0,
+          "limit":  5
+        },
+        "artists": {
+          "items":  _artistsFromItems(d["artists"]["items"] as List),
+          "total":  d["artists"]["totalNumberOfItems"] ?? 0,
+          "offset": 0,
+          "limit":  5
+        },
+        "playlists": {
+          "items":  _playlistsFromItems(d["playlists"]["items"] as List),
+          "total":  d["playlists"]["totalNumberOfItems"] ?? 0,
+          "offset": 0,
+          "limit":  5
+        }
+      }.toJson()
+    })
+  }
+
+  fun tracks(query: string, { offset: int = 0, limit: int = 20 }) {
+    return client.get(
+      "/v1/search",
+      queryParameters: {
+        "query":       query,
+        "types":       "TRACKS",
+        "offset":      offset.toString(),
+        "limit":       limit.toString(),
+        "sessionId":   auth.sessionId(),
+        "token":       "kgsOOmYk3zShYrNP",
+        "countryCode": auth.country()
+      }
+    ).then((res) {
+      var data = res.data["tracks"]
+      return {
+        "items":  _tracksFromItems(data["items"] as List),
+        "total":  data["totalNumberOfItems"],
+        "offset": offset,
+        "limit":  limit
+      }.toJson()
+    })
+  }
+
+  fun albums(query: string, { offset: int = 0, limit: int = 20 }) {
+    return client.get(
+      "/v1/search",
+      queryParameters: {
+        "query":       query,
+        "types":       "ALBUMS",
+        "offset":      offset.toString(),
+        "limit":       limit.toString(),
+        "sessionId":   auth.sessionId(),
+        "token":       "kgsOOmYk3zShYrNP",
+        "countryCode": auth.country()
+      }
+    ).then((res) {
+      var data = res.data["albums"]
+      return {
+        "items":  _albumsFromItems(data["items"] as List),
+        "total":  data["totalNumberOfItems"],
+        "offset": offset,
+        "limit":  limit
+      }.toJson()
+    })
+  }
+
+  fun artists(query: string, { offset: int = 0, limit: int = 20 }) {
+    return client.get(
+      "/v1/search",
+      queryParameters: {
+        "query":       query,
+        "types":       "ARTISTS",
+        "offset":      offset.toString(),
+        "limit":       limit.toString(),
+        "sessionId":   auth.sessionId(),
+        "token":       "kgsOOmYk3zShYrNP",
+        "countryCode": auth.country()
+      }
+    ).then((res) {
+      var data = res.data["artists"]
+      return {
+        "items":  _artistsFromItems(data["items"] as List),
+        "total":  data["totalNumberOfItems"],
+        "offset": offset,
+        "limit":  limit
+      }.toJson()
+    })
+  }
+
+  fun playlists(query: string, { offset: int = 0, limit: int = 20 }) {
+    return client.get(
+      "/v1/search",
+      queryParameters: {
+        "query":       query,
+        "types":       "PLAYLISTS",
+        "offset":      offset.toString(),
+        "limit":       limit.toString(),
+        "sessionId":   auth.sessionId(),
+        "token":       "kgsOOmYk3zShYrNP",
+        "countryCode": auth.country()
+      }
+    ).then((res) {
+      var data = res.data["playlists"]
+      return {
+        "items":  _playlistsFromItems(data["items"] as List),
+        "total":  data["totalNumberOfItems"],
+        "offset": offset,
+        "limit":  limit
+      }.toJson()
+    })
+  }
+
+  // ── helpers ─────────────────────────────────────────────────────────────
+
+  fun _coverUrl(uuid: string, size: int = 320) -> string {
+    if (uuid == null || uuid == "") return ""
+    return "https://resources.tidal.com/images/${uuid.replaceAll('-','/')}/${size}x${size}.jpg"
+  }
+
+  fun _tracksFromItems(items: List) -> List {
+    return items.map((t) {
+      return {
+        "id":          t["id"].toString(),
+        "name":        t["title"],
+        "durationMs":  (t["duration"] as int) * 1000,
+        "explicit":    t["explicit"] ?? false,
+        "isrc":        t["isrc"] ?? "",
+        "trackNumber": t["trackNumber"] ?? 1,
+        "artists": [{ "id": t["artist"]["id"].toString(), "name": t["artist"]["name"], "images": [] }],
+        "album": {
+          "id":     t["album"]["id"].toString(),
+          "name":   t["album"]["title"],
+          "images": [{ "url": _coverUrl(t["album"]["cover"]), "width": 320, "height": 320 }]
+        },
+        "images": [{ "url": _coverUrl(t["album"]["cover"]), "width": 320, "height": 320 }]
+      }
+    }).toList()
+  }
+
+  fun _albumsFromItems(items: List) -> List {
+    return items.map((a) {
+      return {
+        "id":          a["id"].toString(),
+        "name":        a["title"],
+        "totalTracks": a["numberOfTracks"] ?? 0,
+        "releaseDate": a["releaseDate"] ?? "",
+        "artists": [{ "id": a["artist"]["id"].toString(), "name": a["artist"]["name"], "images": [] }],
+        "images": [
+          { "url": _coverUrl(a["cover"], 640), "width": 640, "height": 640 },
+          { "url": _coverUrl(a["cover"], 320), "width": 320, "height": 320 }
+        ]
+      }
+    }).toList()
+  }
+
+  fun _artistsFromItems(items: List) -> List {
+    return items.map((a) {
+      return {
+        "id":     a["id"].toString(),
+        "name":   a["name"],
+        "images": [{ "url": _coverUrl(a["picture"], 480), "width": 480, "height": 480 }]
+      }
+    }).toList()
+  }
+
+  fun _playlistsFromItems(items: List) -> List {
+    return items.map((p) {
+      return {
+        "id":          p["uuid"],
+        "name":        p["title"],
+        "description": p["description"] ?? "",
+        "totalTracks": p["numberOfTracks"] ?? 0,
+        "images":      []
+      }
+    }).toList()
+  }
+}

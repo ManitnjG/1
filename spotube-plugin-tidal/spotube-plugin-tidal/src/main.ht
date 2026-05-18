@@ -1,0 +1,57 @@
+import 'package:hetu_spotube_plugin/hetu_spotube_plugin.dart'
+import 'segments/auth.ht'
+import 'segments/user.ht'
+import 'segments/track.ht'
+import 'segments/album.ht'
+import 'segments/artist.ht'
+import 'segments/playlist.ht'
+import 'segments/search.ht'
+import 'segments/browse.ht'
+
+// Entry point — name must match plugin.json "entryPoint"
+class TidalPlugin {
+  // Required by Spotube
+  var auth:     AuthEndpoint
+  var user:     UserEndpoint
+  var track:    TrackEndpoint
+  var album:    AlbumEndpoint
+  var artist:   ArtistEndpoint
+  var playlist: PlaylistEndpoint
+  var search:   SearchEndpoint
+  var browse:   BrowseEndpoint
+
+  // Shared HTTP client — all segments share a single base-URL client
+  var _api: HttpClient
+
+  construct () {
+    _api = HttpClient(
+      HttpBaseOptions(
+        baseUrl: "https://api.tidal.com",
+        headers: {
+          "X-Tidal-Token": "kgsOOmYk3zShYrNP",
+          "Accept":        "application/json",
+          "User-Agent":    "Mozilla/5.0 (compatible; SpotubePlugin/1.0)"
+        }
+      )
+    )
+
+    auth     = AuthEndpoint(_api)
+    user     = UserEndpoint(_api, auth)
+    track    = TrackEndpoint(_api, auth)
+    album    = AlbumEndpoint(_api, auth)
+    artist   = ArtistEndpoint(_api, auth)
+    playlist = PlaylistEndpoint(_api, auth)
+    search   = SearchEndpoint(_api, auth)
+    browse   = BrowseEndpoint(_api, auth)
+
+    // Restore a previous session from local storage on startup
+    _recoverSession()
+  }
+
+  fun _recoverSession() {
+    var sid = LocalStorage.get("tidal_session_id")
+    if (sid != null && sid != "") {
+      auth.controller.add({ "type": "recovered" }.toJson())
+    }
+  }
+}

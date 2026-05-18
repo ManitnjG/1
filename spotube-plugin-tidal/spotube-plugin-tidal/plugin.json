@@ -1,0 +1,13 @@
+{
+  "id": "tidal-audio-source",
+  "name": "Tidal",
+  "description": "Stream music from Tidal using your own account credentials",
+  "version": "1.0.0",
+  "author": "Community",
+  "entryPoint": "TidalPlugin",
+  "pluginType": "MetadataProvider",
+  "minAppVersion": "5.1.0",
+  "icon": "https://resources.tidal.com/images/brand/logo.png",
+  "repository": "https://github.com/your-username/spotube-plugin-tidal",
+  "license": "MIT"
+}

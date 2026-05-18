@@ -1,0 +1,98 @@
+import 'package:hetu_spotube_plugin/hetu_spotube_plugin.dart'
+
+class AuthEndpoint {
+  var client: HttpClient
+  final controller: StreamController
+
+  get authStateStream -> Stream => controller.stream
+
+  construct (this.client) {
+    controller = StreamController.broadcast()
+  }
+
+  fun isAuthenticated() -> bool {
+    var token = LocalStorage.get("tidal_access_token")
+    var sessionId = LocalStorage.get("tidal_session_id")
+    return token != null && token != "" && sessionId != null && sessionId != ""
+  }
+
+  fun authenticate() -> Future {
+    return Forms.show([
+      FormField(
+        id: "username",
+        label: "Tidal Email",
+        type: FormFieldType.email,
+        required: true
+      ),
+      FormField(
+        id: "password",
+        label: "Password",
+        type: FormFieldType.password,
+        required: true
+      )
+    ]).then((values) {
+      var username = values["username"]
+      var password = values["password"]
+
+      return client.post(
+        "/v1/login/username",
+        data: {
+          "username": username,
+          "password": password,
+          "token": "kgsOOmYk3zShYrNP",
+          "clientVersion": "2.2.0--7",
+          "clientUniqueKey": "spotube-tidal-plugin"
+        }
+      ).then((res) {
+        var data = res.data
+        LocalStorage.set("tidal_session_id", data["sessionId"])
+        LocalStorage.set("tidal_user_id",    data["userId"].toString())
+        LocalStorage.set("tidal_country",    data["countryCode"])
+
+        // Fetch OAuth token for v2 endpoints
+        return client.post(
+          "/v1/oauth2/token",
+          data: {
+            "username": username,
+            "password": password,
+            "grant_type": "password",
+            "client_id": "zU4XHVVkc2tDPo4t",
+            "scope": "r_usr+w_usr+w_sub"
+          }
+        ).then((tokenRes) {
+          var tokenData = tokenRes.data
+          LocalStorage.set("tidal_access_token",  tokenData["access_token"])
+          LocalStorage.set("tidal_refresh_token", tokenData["refresh_token"])
+          controller.add({ "type": "login" }.toJson())
+        })
+      })
+    })
+  }
+
+  fun logout() -> Future {
+    LocalStorage.remove("tidal_session_id")
+    LocalStorage.remove("tidal_user_id")
+    LocalStorage.remove("tidal_country")
+    LocalStorage.remove("tidal_access_token")
+    LocalStorage.remove("tidal_refresh_token")
+    controller.add({ "type": "logout" }.toJson())
+    return Future.value(null)
+  }
+
+  // helpers used by other segments
+  fun sessionId() -> string {
+    return LocalStorage.get("tidal_session_id") ?? ""
+  }
+
+  fun userId() -> string {
+    return LocalStorage.get("tidal_user_id") ?? ""
+  }
+
+  fun country() -> string {
+    return LocalStorage.get("tidal_country") ?? "US"
+  }
+
+  fun accessToken() -> string {
+    return LocalStorage.get("tidal_access_token") ?? ""
+  }
+}

@@ -1,0 +1,137 @@
+name: Build Spotube Tidal Plugin
+
+on:
+  push:
+    branches: [main, master]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Compile & Package Plugin
+    runs-on: ubuntu-latest
+
+    steps:
+      # ── checkout ────────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── Dart / Flutter setup ─────────────────────────────────────────────
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          channel: stable
+          cache: true
+
+      - name: Verify Dart version
+        run: dart --version
+
+      # ── Hetu Script tooling ─────────────────────────────────────────────
+      - name: Install hetu_script_dev_tools
+        run: |
+          dart pub global activate hetu_script_dev_tools
+          echo "$HOME/.pub-cache/bin" >> $GITHUB_PATH
+
+      - name: Verify hetu tooling
+        run: hetu --version
+
+      # ── plugin dependencies ─────────────────────────────────────────────
+      - name: Get dependencies
+        run: dart pub get
+
+      # ── compile ─────────────────────────────────────────────────────────
+      - name: Compile Hetu Script to bytecode
+        run: |
+          mkdir -p build
+          hetu build src/main.ht -o build/plugin.smplug
+          echo "Bytecode size: $(wc -c < build/plugin.smplug) bytes"
+
+      # ── package ─────────────────────────────────────────────────────────
+      - name: Read version from plugin.json
+        id: version
+        run: |
+          VERSION=$(python3 -c "import json; print(json.load(open('plugin.json'))['version'])")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Plugin version: $VERSION"
+
+      - name: Create distribution zip (Android-ready)
+        run: |
+          DIST="spotube-plugin-tidal-${{ steps.version.outputs.version }}"
+          mkdir -p dist/$DIST
+          cp build/plugin.smplug dist/$DIST/
+          cp plugin.json         dist/$DIST/
+          cp README.md           dist/$DIST/ 2>/dev/null || true
+          cp LICENSE             dist/$DIST/ 2>/dev/null || true
+
+          cd dist
+          zip -r "${DIST}.zip" "$DIST/"
+          echo "=== Zip contents ==="
+          unzip -l "${DIST}.zip"
+          echo "Zip size: $(wc -c < ${DIST}.zip) bytes"
+
+      # ── upload artifact ─────────────────────────────────────────────────
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: spotube-plugin-tidal-${{ steps.version.outputs.version }}
+          path: dist/*.zip
+          retention-days: 30
+
+      # ── GitHub Release (only on version tags) ────────────────────────────
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Tidal Plugin ${{ steps.version.outputs.version }}
+          body: |
+            ## Spotube Tidal Plugin ${{ steps.version.outputs.version }}
+
+            ### Installation
+            1. Download the `.zip` file below
+            2. Extract `plugin.smplug` from the zip
+            3. In Spotube → Settings → Plugins → Upload from local file
+            4. Select `plugin.smplug`
+            5. Login with your Tidal credentials
+
+            ### Requirements
+            - Spotube v5.1.0+
+            - Your own Tidal account
+
+            ### Audio Quality
+            | Subscription | Quality |
+            |---|---|
+            | Free | AAC 96 kbps |
+            | HiFi | FLAC Lossless |
+            | HiFi Plus | MQA / 24-bit Hi-Res |
+          files: dist/*.zip
+          draft: false
+          prerelease: false
+
+  # ── optional: lint / syntax-check ──────────────────────────────────────
+  lint:
+    name: Check Hetu Script syntax
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          channel: stable
+
+      - name: Install hetu_script_dev_tools
+        run: |
+          dart pub global activate hetu_script_dev_tools
+          echo "$HOME/.pub-cache/bin" >> $GITHUB_PATH
+
+      - name: Get dependencies
+        run: dart pub get
+
+      - name: Lint main.ht
+        run: hetu check src/main.ht

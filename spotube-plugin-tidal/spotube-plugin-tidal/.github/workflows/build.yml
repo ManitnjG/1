@@ -47,7 +47,7 @@ jobs:
       - name: Verify hetu tooling
         run: hetu --version
 
-      # ── plugin dependencies ─────────────────────────────────────────────
+      # ── plugin dependencies. ─────────────────────────────────────────────
       - name: Get dependencies
         run: dart pub get
 

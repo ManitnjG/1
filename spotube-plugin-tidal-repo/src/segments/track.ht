@@ -1,0 +1,134 @@
+import 'package:hetu_spotube_plugin/hetu_spotube_plugin.dart'
+
+class TrackEndpoint {
+  var client: HttpClient
+  var auth: AuthEndpoint
+
+  construct (this.client, this.auth)
+
+  fun getTrack(id: string) {
+    return client.get(
+      "/v1/tracks/${id}",
+      queryParameters: {
+        "sessionId":   auth.sessionId(),
+        "token":       "kgsOOmYk3zShYrNP",
+        "countryCode": auth.country()
+      }
+    ).then((res) {
+      return _mapTrack(res.data)
+    })
+  }
+
+  fun save(trackIds: List) {
+    return client.post(
+      "/v1/users/${auth.userId()}/favorites/tracks",
+      data: { "trackIds": (trackIds as List).join(",") },
+      queryParameters: {
+        "sessionId": auth.sessionId(),
+        "token":     "kgsOOmYk3zShYrNP"
+      }
+    )
+  }
+
+  fun unsave(trackIds: List) {
+    var id = trackIds[0].toString()
+    return client.delete(
+      "/v1/users/${auth.userId()}/favorites/tracks/${id}",
+      queryParameters: {
+        "sessionId": auth.sessionId(),
+        "token":     "kgsOOmYk3zShYrNP"
+      }
+    )
+  }
+
+  fun radio(id: string) {
+    return client.get(
+      "/v1/tracks/${id}/mix",
+      queryParameters: {
+        "sessionId":   auth.sessionId(),
+        "token":       "kgsOOmYk3zShYrNP",
+        "countryCode": auth.country()
+      }
+    ).then((res) {
+      var mixId = res.data["id"]
+      return client.get(
+        "/v1/mixes/${mixId}/items",
+        queryParameters: {
+          "sessionId":   auth.sessionId(),
+          "token":       "kgsOOmYk3zShYrNP",
+          "countryCode": auth.country(),
+          "limit":       "50"
+        }
+      ).then((mixRes) {
+        var items = mixRes.data["items"] as List
+        return items.map((item) => _mapTrack(item["item"])).toList()
+      })
+    })
+  }
+
+  // Audio Source: resolve a playback URL for a given Spotube track object.
+  // Spotube calls this when it needs the actual stream URL.
+  fun getAudioUrl(track: Map) -> Future {
+    var id = track["id"].toString()
+    return client.get(
+      "/v2/tracks/${id}/urlpostpaywall",
+      queryParameters: {
+        "sessionId":             auth.sessionId(),
+        "token":                 "kgsOOmYk3zShYrNP",
+        "countryCode":           auth.country(),
+        "quality":               _qualityParam(),
+        "urlusagemode":          "STREAM",
+        "assetpresentation":     "FULL",
+        "audiomodes":            "STEREO"
+      },
+      headers: {
+        "Authorization": "Bearer ${auth.accessToken()}"
+      }
+    ).then((res) {
+      var urls = res.data["urls"] as List
+      return urls.isNotEmpty ? urls[0] : ""
+    })
+  }
+
+  // ── private helpers ─────────────────────────────────────────────────────
+
+  fun _qualityParam() -> string {
+    // Prefer lossless when the account supports it
+    var tok = auth.accessToken()
+    if (tok != null && tok != "") return "LOSSLESS"
+    return "HIGH"
+  }
+
+  fun _coverUrl(uuid: string, size: int = 320) -> string {
+    if (uuid == null || uuid == "") return ""
+    return "https://resources.tidal.com/images/${uuid.replaceAll('-', '/')}/${size}x${size}.jpg"
+  }
+
+  fun _mapTrack(t: Map) -> Map {
+    return {
+      "id":          t["id"].toString(),
+      "name":        t["title"],
+      "durationMs":  (t["duration"] as int) * 1000,
+      "explicit":    t["explicit"] ?? false,
+      "isrc":        t["isrc"] ?? "",
+      "trackNumber": t["trackNumber"] ?? 1,
+      "artists": [
+        {
+          "id":   t["artist"]["id"].toString(),
+          "name": t["artist"]["name"],
+          "images": []
+        }
+      ],
+      "album": {
+        "id":     t["album"]["id"].toString(),
+        "name":   t["album"]["title"],
+        "images": [
+          { "url": _coverUrl(t["album"]["cover"]), "width": 320, "height": 320 }
+        ]
+      },
+      "images": [
+        { "url": _coverUrl(t["album"]["cover"]), "width": 320, "height": 320 }
+      ]
+    }
+  }
+}

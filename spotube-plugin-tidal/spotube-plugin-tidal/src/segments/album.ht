@@ -1,0 +1,129 @@
+import 'package:hetu_spotube_plugin/hetu_spotube_plugin.dart'
+
+class AlbumEndpoint {
+  var client: HttpClient
+  var auth: AuthEndpoint
+
+  construct (this.client, this.auth)
+
+  fun getAlbum(id: string) {
+    return client.get(
+      "/v1/albums/${id}",
+      queryParameters: {
+        "sessionId":   auth.sessionId(),
+        "token":       "kgsOOmYk3zShYrNP",
+        "countryCode": auth.country()
+      }
+    ).then((res) => _mapAlbum(res.data))
+  }
+
+  fun tracks(id: string, { offset: int = 0, limit: int = 20 }) {
+    return client.get(
+      "/v1/albums/${id}/tracks",
+      queryParameters: {
+        "sessionId":   auth.sessionId(),
+        "token":       "kgsOOmYk3zShYrNP",
+        "countryCode": auth.country(),
+        "offset":      offset.toString(),
+        "limit":       limit.toString()
+      }
+    ).then((res) {
+      var data  = res.data
+      var items = (data["items"] as List).map((t) => _mapTrack(t)).toList()
+      return {
+        "items":  items,
+        "total":  data["totalNumberOfItems"],
+        "offset": offset,
+        "limit":  limit
+      }.toJson()
+    })
+  }
+
+  fun releases({ offset: int = 0, limit: int = 20 }) {
+    // New releases on Tidal
+    return client.get(
+      "/v1/featured/new",
+      queryParameters: {
+        "sessionId":   auth.sessionId(),
+        "token":       "kgsOOmYk3zShYrNP",
+        "countryCode": auth.country(),
+        "offset":      offset.toString(),
+        "limit":       limit.toString()
+      }
+    ).then((res) {
+      var data  = res.data
+      var items = (data["items"] as List).map((a) => _mapAlbum(a)).toList()
+      return {
+        "items":  items,
+        "total":  data["totalNumberOfItems"] ?? items.length,
+        "offset": offset,
+        "limit":  limit
+      }.toJson()
+    })
+  }
+
+  fun save(albumIds: List) {
+    return client.post(
+      "/v1/users/${auth.userId()}/favorites/albums",
+      data: { "albumIds": (albumIds as List).join(",") },
+      queryParameters: {
+        "sessionId": auth.sessionId(),
+        "token":     "kgsOOmYk3zShYrNP"
+      }
+    )
+  }
+
+  fun unsave(albumIds: List) {
+    var id = albumIds[0].toString()
+    return client.delete(
+      "/v1/users/${auth.userId()}/favorites/albums/${id}",
+      queryParameters: {
+        "sessionId": auth.sessionId(),
+        "token":     "kgsOOmYk3zShYrNP"
+      }
+    )
+  }
+
+  // ── helpers ─────────────────────────────────────────────────────────────
+
+  fun _coverUrl(uuid: string, size: int = 320) -> string {
+    if (uuid == null || uuid == "") return ""
+    return "https://resources.tidal.com/images/${uuid.replaceAll('-','/')}/${size}x${size}.jpg"
+  }
+
+  fun _mapAlbum(a: Map) -> Map {
+    return {
+      "id":          a["id"].toString(),
+      "name":        a["title"],
+      "totalTracks": a["numberOfTracks"] ?? 0,
+      "releaseDate": a["releaseDate"] ?? "",
+      "artists": [
+        { "id": a["artist"]["id"].toString(), "name": a["artist"]["name"], "images": [] }
+      ],
+      "images": [
+        { "url": _coverUrl(a["cover"], 640), "width": 640, "height": 640 },
+        { "url": _coverUrl(a["cover"], 320), "width": 320, "height": 320 }
+      ]
+    }
+  }
+
+  fun _mapTrack(t: Map) -> Map {
+    return {
+      "id":          t["id"].toString(),
+      "name":        t["title"],
+      "durationMs":  (t["duration"] as int) * 1000,
+      "explicit":    t["explicit"] ?? false,
+      "isrc":        t["isrc"] ?? "",
+      "trackNumber": t["trackNumber"] ?? 1,
+      "artists": [
+        { "id": t["artist"]["id"].toString(), "name": t["artist"]["name"], "images": [] }
+      ],
+      "album": {
+        "id":     t["album"]["id"].toString(),
+        "name":   t["album"]["title"],
+        "images": [{ "url": _coverUrl(t["album"]["cover"]), "width": 320, "height": 320 }]
+      },
+      "images": [{ "url": _coverUrl(t["album"]["cover"]), "width": 320, "height": 320 }]
+    }
+  }
+}

@@ -1,0 +1,14 @@
+name: spotube_plugin_tidal
+description: Tidal audio source plugin for Spotube
+version: 1.0.0
+homepage: https://github.com/your-username/spotube-plugin-tidal
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  hetu_script: ^0.5.0
+  hetu_script_dev_tools: ^0.5.0
+
+dev_dependencies:
+  lints: ^3.0.0
